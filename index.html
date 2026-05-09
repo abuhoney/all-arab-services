@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>منصة الخدمات المتكاملة | All Arab Services</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
+        * { font-family: 'Cairo', sans-serif; }
+        .card-hover { transition: all 0.2s; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+        .image-preview { background-size: cover; background-position: center; }
+        .modal-backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 24px; max-width: 90%; width: 500px; max-height: 90vh; overflow-y: auto; padding: 20px; }
+        .cropper-container { max-height: 400px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .offline-banner { background: #f59e0b; color: white; text-align: center; padding: 8px; font-size: 12px; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
+        .nav-btn.active { color: #2563eb; }
+        .toast { animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="offlineBanner" class="offline-banner hidden">
+        <i class="fa-solid fa-wifi-slash"></i> أنت الآن أوفلاين - البيانات المحفوظة تعمل
+    </div>
+
+    <div id="loader" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
+        <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <h2 class="text-xl font-bold">منصة الخدمات</h2>
+        <p class="text-slate-500" id="loaderText">جاري التحميل...</p>
+        <p class="text-xs text-slate-400 mt-4" id="loaderDetail">جاري التحقق من الاتصال</p>
+    </div>
+
+    <div id="app" class="max-w-5xl mx-auto h-screen flex flex-col hidden">
+        <header class="bg-white shadow-md px-4 py-3 sticky top-0 z-30 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-cubes text-2xl text-blue-600"></i>
+                <h1 class="text-xl font-bold">منصة الخدمات</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="showNotificationsModal()" class="relative">
+                    <i class="fa-solid fa-bell text-xl text-slate-600"></i>
+                    <span id="notifBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hidden"></span>
+                </button>
+                <div class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                    <i class="fa-solid fa-coins"></i> <span id="points">0</span>
+                </div>
+                <button id="profileBtn" class="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center"><i class="fa-solid fa-user text-slate-600"></i></button>
+                <button id="adminBtn" class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center hidden"><i class="fa-solid fa-shield-halved text-red-600"></i></button>
+            </div>
+        </header>
+
+        <div class="bg-white px-4 pb-3 shadow-sm">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute right-4 top-3 text-slate-400"></i>
+                <input type="text" id="searchInput" placeholder="ابحث عن منشأة، منتج، خدمة..." class="w-full bg-gray-100 border-none rounded-full py-3 pr-12 pl-4 focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+
+        <nav class="bg-white shadow-inner sticky bottom-0 grid grid-cols-5 text-center py-2 border-t">
+            <button data-page="home" class="nav-btn flex flex-col items-center justify-center text-blue-600"><i class="fa-solid fa-house text-xl"></i><span class="text-xs">الرئيسية</span></button>
+            <button data-page="categories" class="nav-btn flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-table-cells-large text-xl"></i><span class="text-xs">الأقسام</span></button>
+            <button id="addBtn" class="bg-blue-600 text-white rounded-full w-14 h-14 -mt-6 shadow-lg mx-auto flex items-center justify-center border-4 border-gray-100"><i class="fa-solid fa-plus text-2xl"></i></button>
+            <button data-page="favorites" class="nav-btn flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-heart text-xl"></i><span class="text-xs">المفضلة</span></button>
+            <button data-page="myServices" class="nav-btn flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-box text-xl"></i><span class="text-xs">خدماتي</span></button>
+        </nav>
+        
+        <!-- أزرار إضافية أسفل الناف -->
+        <div class="grid grid-cols-2 gap-2 py-2 px-4 bg-white border-t text-xs">
+            <button onclick="showInstructions()" class="bg-blue-50 text-blue-600 py-2 rounded-xl"><i class="fa-solid fa-circle-question"></i> التعليمات</button>
+            <button onclick="showPrivacyPolicy()" class="bg-slate-50 text-slate-600 py-2 rounded-xl"><i class="fa-solid fa-shield-halved"></i> الخصوصية</button>
+        </div>
+    </div>
+
+    <div id="modalRoot"></div>
+    <div id="toastRoot" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50"></div>
+
+    <script type="module">
+        // ======================== Firebase Configuration ========================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, onSnapshot, enableIndexedDbPersistence, serverTimestamp, updateDoc, arrayUnion, arrayRemove, increment, deleteDoc } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged, updateProfile } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-storage.js';
+        
+        // Firebase configuration from config.py
+        const firebaseConfig = {
+            apiKey: "AIzaSyBm-ZwOv8oPd_0rms_2oesGz3fDmt5ogvA",
+            authDomain: "all-arab-services-750ad.firebaseapp.com",
+            databaseURL: "https://all-arab-services-750ad-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "all-arab-services-750ad",
+            storageBucket: "all-arab-services-750ad.firebasestorage.app",
+            messagingSenderId: "1002499268790",
+            appId: "1:1002499268790:web:9437bee4f4df9f93adc617",
+            measurementId: "G-5YLWVFPW60"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const storage = getStorage(app);
+        
+        // Enable offline persistence
+        enableIndexedDbPersistence(db).catch((err) => {
+            if (err.code == 'failed-precondition') {
+                console.log('Multiple tabs open, persistence failed');
+            } else if (err.code == 'unimplemented') {
+                console.log('Browser does not support persistence');
+            }
+        });
+        
+        // Global variables
+        window.db = db;
+        window.auth = auth;
+        window.storage = storage;
+        window.serverTimestamp = serverTimestamp;
+        
+        // App Variables
+        let currentUser = null;
+        let allServices = [];
+        let allCategories = [];
+        let isOnline = navigator.onLine;
+        let favorites = [];
+        let currentPage = 'home';
+        let allCoupons = [];
+        
+        const APP_VERSION = '2.0.0';
+        const ADMIN_WHATSAPP = "967773458975";
+        
+        const CATEGORIES = [
+            { id: "health", name: "🏥 صحة ومستشفيات", icon: "fa-hospital-user", color: "blue" },
+            { id: "finance", name: "💰 خدمات مالية", icon: "fa-chart-line", color: "green" },
+            { id: "hotels", name: "🏨 فنادق وسياحة", icon: "fa-hotel", color: "purple" },
+            { id: "restaurants", name: "🍽️ مطاعم", icon: "fa-utensils", color: "orange" },
+            { id: "fashion", name: "👗 ملابس وأزياء", icon: "fa-shirt", color: "pink" },
+            { id: "realestate", name: "🏠 عقارات", icon: "fa-building", color: "red" },
+            { id: "education", name: "📚 تعليم", icon: "fa-graduation-cap", color: "indigo" },
+            { id: "services", name: "🛠️ خدمات عامة", icon: "fa-wrench", color: "slate" }
+        ];
+        
+        const CURRENCIES = [
+            { code: "YER", symbol: "ر.ي", name: "ريال يمني", rate: 1 },
+            { code: "SAR", symbol: "ر.س", name: "ريال سعودي", rate: 0.015 },
+            { code: "USD", symbol: "$", name: "دولار أمريكي", rate: 0.004 }
+        ];
+        
+        // ======================== Helper Functions ========================
+        function showToast(msg, type = "success") {
+            const toast = document.createElement("div");
+            toast.className = `toast px-4 py-3 rounded-xl shadow-lg text-white text-sm ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'} transition-all duration-300 z-50`;
+            toast.innerHTML = `<i class="fa-${type === 'success' ? 'solid fa-check' : type === 'error' ? 'solid fa-exclamation' : 'solid fa-info'} ml-2"></i>${msg}`;
+            document.getElementById("toastRoot").innerHTML = "";
+            document.getElementById("toastRoot").appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        function showModal(content) {
+            const modalDiv = document.createElement('div');
+            modalDiv.className = 'modal-backdrop';
+            modalDiv.innerHTML = `<div class="modal-content relative">${content}<button onclick="this.closest('.modal-backdrop').remove()" class="absolute top-2 left-2 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-times"></i></button></div>`;
+            modalDiv.onclick = (e) => { if (e.target === modalDiv) modalDiv.remove(); };
+            document.getElementById("modalRoot").innerHTML = "";
+            document.getElementById("modalRoot").appendChild(modalDiv);
+            return modalDiv;
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            showToast('تم النسخ 📋', 'success');
+        }
+        
+        function formatDate(timestamp) {
+            if (!timestamp) return 'غير محدد';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('ar-EG');
+        }
+        
+        // ======================== Encryption & Device ID ========================
+        const SECRET_SALT = 'ALL_ARAB_SERVICES_SECURE_SALT_2024_V2';
+        
+        async function generateSecureDeviceId() {
+            const fp = navigator.userAgent + screen.width + screen.height + navigator.language + navigator.platform + screen.colorDepth + navigator.hardwareConcurrency;
+            const encoder = new TextEncoder();
+            const data = encoder.encode(fp + SECRET_SALT);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        function encryptData(data) {
+            try {
+                return btoa(encodeURIComponent(JSON.stringify(data)));
+            } catch { return null; }
+        }
+        
+        function decryptData(encrypted) {
+            try {
+                return JSON.parse(decodeURIComponent(atob(encrypted)));
+            } catch { return null; }
+        }
+        
+        // ======================== Online/Offline Handlers ========================
+        window.addEventListener('online', () => {
+            isOnline = true;
+            document.getElementById('offlineBanner').classList.add('hidden');
+            showToast('✅ تم استعادة الاتصال', 'success');
+            loadData();
+            syncPendingData();
+        });
+        
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            document.getElementById('offlineBanner').classList.remove('hidden');
+            showToast('⚠️ أنت أوفلاين - الوضع المحلي مفعل', 'info');
+        });
+        
+        async function syncPendingData() {
+            const pending = JSON.parse(localStorage.getItem('pending_sync') || '[]');
+            if (pending.length === 0) return;
+            showToast(`جاري مزامنة ${pending.length} عنصر...`, 'info');
+            for (const item of pending) {
+                try {
+                    if (item.type === 'service') {
+                        await window.createServiceWithImage(item.data, item.imageBlob);
+                    }
+                } catch (e) { console.error('Sync failed:', e); }
+            }
+            localStorage.removeItem('pending_sync');
+        }
+        
+        // ======================== User Initialization ========================
+        async function initUser() {
+            document.getElementById('loaderText').innerText = 'جاري التحقق من الهوية...';
+            const deviceId = await generateSecureDeviceId();
+            
+            return new Promise((resolve) => {
+                onAuthStateChanged(auth, async (firebaseUser) => {
+                    if (!firebaseUser) {
+                        await signInAnonymously(auth);
+                        return;
+                    }
+                    
+                    const userRef = doc(db, 'users', firebaseUser.uid);
+                    const userSnap = await getDoc(userRef);
+                    
+                    if (userSnap.exists()) {
+                        currentUser = userSnap.data();
+                        if (currentUser.deviceId !== deviceId) {
+                            currentUser.deviceId = deviceId;
+                            await setDoc(userRef, currentUser, { merge: true });
+                        }
+                    } else {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const refCode = urlParams.get('ref');
+                        
+                        currentUser = {
+                            uid: firebaseUser.uid,
+                            deviceId: deviceId,
+                            name: "زائر جديد",
+                            phone: "",
+                            email: "",
+                            avatar: null,
+                            points: 100,
+                            role: "user",
+                            referralCode: deviceId.substr(-8).toUpperCase(),
+                            referredBy: refCode || null,
+                            totalReferrals: 0,
+                            totalReferralEarnings: 0,
+                            walletFrozen: false,
+                            createdAt: serverTimestamp(),
+                            lastLogin: serverTimestamp(),
+                            appVersion: APP_VERSION,
+                            fcmToken: null
+                        };
+                        await setDoc(userRef, currentUser);
+                        
+                        if (refCode) {
+                            try {
+                                await fetch(`${API_URL}/api/referral/track`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ newUserId: firebaseUser.uid, referralCode: refCode })
+                                });
+                            } catch(e) { console.log('Referral track failed:', e); }
+                        }
+                        
+                        showToast("👋 مرحباً بك! تم إضافة 100 نقطة ترحيبية", "success");
+                    }
+                    
+                    document.getElementById("points").innerText = currentUser.points;
+                    if (currentUser.role === 'admin') document.getElementById('adminBtn').classList.remove('hidden');
+                    resolve();
+                });
+            });
+        }
+        
+        // ======================== Load Data ========================
+        async function loadData() {
+            document.getElementById('loaderText').innerText = 'جاري تحميل الخدمات...';
+            
+            try {
+                const servicesQuery = query(
+                    collection(db, 'services'), 
+                    where('status', '==', 'approved'),
+                    orderBy('createdAt', 'desc'),
+                    limit(100)
+                );
+                const snapshot = await getDocs(servicesQuery);
+                allServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                localStorage.setItem('cached_services', encryptData(allServices));
+            } catch (error) {
+                console.error('Load data error:', error);
+                const cached = localStorage.getItem('cached_services');
+                if (cached) allServices = decryptData(cached) || [];
+            }
+            
+            // Load favorites from localStorage
+            const savedFavs = localStorage.getItem(`favorites_${currentUser?.uid}`);
+            if (savedFavs) favorites = JSON.parse(savedFavs);
+        }
+        
+        // ======================== Render Functions ========================
+        function renderServiceCard(service) {
+            const isFav = favorites.includes(service.id);
+            const currencySym = CURRENCIES.find(c => c.code === service.currency)?.symbol || 'ر.ي';
+            const hasDiscount = service.discountPercent && service.discountPercent > 0;
+            const finalPrice = hasDiscount ? service.price : service.basePrice;
+            
+            return `
+                <div class="bg-white rounded-xl shadow-md overflow-hidden card-hover cursor-pointer" onclick="viewService('${service.id}')">
+                    <div class="relative">
+                        <img src="${service.image || 'https://placehold.co/400x300'}" class="w-full h-36 object-cover" onerror="this.src='https://placehold.co/400x300'">
+                        ${hasDiscount ? `<div class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">-${service.discountPercent}%</div>` : ''}
+                        <button onclick="event.stopPropagation(); toggleFavorite('${service.id}')" class="absolute top-2 left-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
+                            <i class="fa-${isFav ? 'solid' : 'regular'} fa-heart ${isFav ? 'text-red-500' : 'text-gray-400'}"></i>
+                        </button>
+                    </div>
+                    <div class="p-3">
+                        <p class="text-xs text-blue-600 truncate">${service.establishment || 'غير محدد'}</p>
+                        <h3 class="font-semibold text-sm truncate">${service.productName || 'غير محدد'}</h3>
+                        <div class="flex items-center gap-2 mt-1">
+                            <p class="text-green-600 font-bold text-sm">${finalPrice} ${currencySym}</p>
+                            ${hasDiscount ? `<p class="text-xs text-slate-400 line-through">${service.basePrice} ${currencySym}</p>` : ''}
+                        </div>
+                        <div class="flex items-center gap-1 mt-1">
+                            <i class="fa-solid fa-star text-yellow-500 text-xs"></i>
+                            <span class="text-xs text-slate-600">${service.avgRating?.toFixed(1) || 'جديد'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        window.renderHome = () => {
+            const featured = allServices.filter(s => (s.avgRating || 0) >= 4).slice(0, 6);
+            const discounts = allServices.filter(s => s.discountPercent > 0).slice(0, 6);
+            const recent = allServices.slice(0, 8);
+            
+            const html = `
+                <div class="space-y-6">
+                    <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-5 rounded-2xl">
+                        <h2 class="text-2xl font-bold mb-1">مرحباً ${currentUser?.name || 'زائر'} 👋</h2>
+                        <p class="text-sm opacity-90">رصيدك: ${currentUser?.points || 0} نقطة</p>
+                        ${currentUser?.role === 'user' ? `
+                            <button onclick="requestUpgrade()" class="bg-white text-blue-600 px-4 py-2 rounded-full text-sm mt-3 font-bold transition hover:bg-gray-100">
+                                ⬆️ ترقية لحساب مميز
+                            </button>
+                        ` : ''}
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-lg">🗂️ تصفح الأقسام</h3>
+                        </div>
+                        <div class="grid grid-cols-4 gap-3">
+                            ${CATEGORIES.slice(0, 8).map(c => `
+                                <button onclick="filterByCategory('${c.id}')" class="bg-white p-3 rounded-xl shadow text-center hover:shadow-md transition">
+                                    <i class="fa-solid ${c.icon} text-xl text-${c.color}-600 mb-1"></i>
+                                    <p class="text-xs font-bold">${c.name.split(' ')[1] || c.name}</p>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    ${discounts.length > 0 ? `
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-lg">🔥 عروض وخصومات</h3>
+                            <button onclick="showDiscountedServices()" class="text-blue-600 text-sm">عرض الكل →</button>
+                        </div>
+                        <div class="flex gap-3 overflow-x-auto pb-2">
+                            ${discounts.map(s => `
+                                <div class="min-w-[180px] bg-white rounded-xl shadow overflow-hidden cursor-pointer" onclick="viewService('${s.id}')">
+                                    <div class="relative">
+                                        <img src="${s.image}" class="w-full h-28 object-cover" onerror="this.src='https://placehold.co/400x300'">
+                                        <div class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">-${s.discountPercent}%</div>
+                                    </div>
+                                    <div class="p-2">
+                                        <p class="text-xs font-bold truncate">${s.productName}</p>
+                                        <p class="text-green-600 font-bold text-sm">${s.price} ${CURRENCIES.find(c => c.code === s.currency)?.symbol || ''}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${featured.length > 0 ? `
+                    <div>
+                        <h3 class="font-bold text-lg mb-3">⭐ الأعلى تقييماً</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            ${featured.map(s => renderServiceCard(s)).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div>
+                        <h3 class="font-bold text-lg mb-3">✨ أضيف حديثاً</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            ${recent.map(s => renderServiceCard(s)).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById("mainContent").innerHTML = html;
+            setActiveNav("home");
+            currentPage = "home";
+        };
+        
+        window.renderCategories = () => {
+            const html = `
+                <h2 class="font-bold text-xl mb-4">📂 جميع الأقسام</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    ${CATEGORIES.map(c => `
+                        <button onclick="filterByCategory('${c.id}')" class="bg-white p-4 rounded-xl shadow text-center hover:shadow-md transition">
+                            <i class="fa-solid ${c.icon} text-3xl text-${c.color}-600 mb-2"></i>
+                            <p class="font-bold">${c.name}</p>
+                            <p class="text-xs text-slate-500 mt-1">${allServices.filter(s => s.category_id === c.id).length} خدمة</p>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            document.getElementById("mainContent").innerHTML = html;
+            setActiveNav("categories");
+            currentPage = "categories";
+        };
+        
+        window.renderMyServices = async () => {
+            if (!currentUser) { showToast('الرجاء تسجيل الدخول', 'error'); return; }
+            
+            const myServices = allServices.filter(s => s.userId === currentUser.uid);
+            const pendingServices = myServices.filter(s => s.status === 'pending');
+            const approvedServices = myServices.filter(s => s.status === 'approved');
+            const rejectedServices = myServices.filter(s => s.status === 'rejected');
+            
+            const html = `
+                <h2 class="font-bold text-xl mb-4">📦 خدماتي</h2>
+                <div class="bg-blue-50 p-3 rounded-xl mb-4 text-center">
+                    <p class="text-sm">📊 إجمالي خدماتك: ${myServices.length}</p>
+                    <div class="flex justify-center gap-4 mt-2 text-xs">
+                        <span class="text-yellow-600">⏳ قيد المراجعة: ${pendingServices.length}</span>
+                        <span class="text-green-600">✅ موافق عليها: ${approvedServices.length}</span>
+                        <span class="text-red-600">❌ مرفوضة: ${rejectedServices.length}</span>
+                    </div>
+                </div>
+                
+                ${pendingServices.length > 0 ? `
+                <h3 class="font-bold mb-2">⏳ قيد المراجعة</h3>
+                <div class="space-y-3 mb-4">
+                    ${pendingServices.map(s => `
+                        <div class="bg-white rounded-xl p-3 shadow">
+                            <div class="flex gap-3">
+                                <img src="${s.image}" class="w-20 h-20 rounded-lg object-cover">
+                                <div class="flex-1">
+                                    <p class="font-bold">${s.productName}</p>
+                                    <p class="text-xs text-slate-600">${s.establishment}</p>
+                                    <p class="text-green-600 font-bold text-sm mt-1">${s.price} ${CURRENCIES.find(c => c.code === s.currency)?.symbol || ''}</p>
+                                    <span class="inline-block mt-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">قيد المراجعة</span>
+                                </div>
+                                <button onclick="deleteService('${s.id}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+                
+                ${approvedServices.length > 0 ? `
+                <h3 class="font-bold mb-2">✅ خدماتي النشطة</h3>
+                <div class="space-y-3">
+                    ${approvedServices.map(s => `
+                        <div class="bg-white rounded-xl p-3 shadow">
+                            <div class="flex gap-3">
+                                <img src="${s.image}" class="w-20 h-20 rounded-lg object-cover">
+                                <div class="flex-1">
+                                    <p class="font-bold">${s.productName}</p>
+                                    <p class="text-xs text-slate-600">${s.establishment}</p>
+                                    <p class="text-green-600 font-bold text-sm mt-1">${s.price} ${CURRENCIES.find(c => c.code === s.currency)?.symbol || ''}</p>
+                                    <div class="flex gap-2 mt-1">
+                                        <button onclick="viewService('${s.id}')" class="text-blue-600 text-xs">عرض</button>
+                                        <button onclick="editService('${s.id}')" class="text-green-600 text-xs">تعديل</button>
+                                        <button onclick="deleteService('${s.id}')" class="text-red-600 text-xs">حذف</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+                
+                ${myServices.length === 0 ? `
+                <div class="text-center py-8">
+                    <i class="fa-solid fa-box-open text-5xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-500">لا توجد خدمات لديك</p>
+                    <button onclick="showAddServiceModal()" class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-xl">➕ إضافة خدمة جديدة</button>
+                </div>
+                ` : ''}
+            `;
+            document.getElementById("mainContent").innerHTML = html;
+            setActiveNav("myServices");
+            currentPage = "myServices";
+        };
+        
+        window.renderFavorites = () => {
+            const favoriteServices = allServices.filter(s => favorites.includes(s.id));
+            
+            const html = `
+                <h2 class="font-bold text-xl mb-4">❤️ المفضلة</h2>
+                ${favoriteServices.length > 0 ? `
+                    <div class="grid grid-cols-2 gap-3">
+                        ${favoriteServices.map(s => renderServiceCard(s)).join('')}
+                    </div>
+                ` : `
+                    <div class="text-center py-8">
+                        <i class="fa-regular fa-heart text-5xl text-slate-300 mb-3"></i>
+                        <p class="text-slate-500">لا توجد خدمات في المفضلة</p>
+                        <button onclick="renderHome()" class="mt-3 text-blue-600">تصفح الخدمات →</button>
+                    </div>
+                `}
+            `;
+            document.getElementById("mainContent").innerHTML = html;
+            setActiveNav("favorites");
+            currentPage = "favorites";
+        };
+        
+        function setActiveNav(page) {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600');
+                btn.classList.add('text-slate-500');
+            });
+            const activeBtn = document.querySelector(`[data-page="${page}"]`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-500');
+                activeBtn.classList.add('text-blue-600');
+            }
+        }
+        
+        // ======================== Navigation ========================
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.onclick = () => {
+                const page = btn.dataset.page;
+                if (page === 'home') renderHome();
+                else if (page === 'categories') renderCategories();
+                else if (page === 'favorites') renderFavorites();
+                else if (page === 'myServices') renderMyServices();
+            };
+        });
+        
+        document.getElementById("addBtn").onclick = () => showAddServiceModal();
+        document.getElementById("profileBtn").onclick = () => showProfileModal();
+        document.getElementById("adminBtn").onclick = () => { if (currentUser?.role === 'admin') showAdminDashboard(); };
+        
+        // ======================== Favorites ========================
+        window.toggleFavorite = (serviceId) => {
+            if (favorites.includes(serviceId)) {
+                favorites = favorites.filter(id => id !== serviceId);
+                showToast('تمت الإزالة من المفضلة', 'info');
+            } else {
+                favorites.push(serviceId);
+                showToast('تمت الإضافة إلى المفضلة 💖', 'success');
+            }
+            localStorage.setItem(`favorites_${currentUser?.uid}`, JSON.stringify(favorites));
+            if (currentPage === 'favorites') renderFavorites();
+            else if (currentPage === 'home') renderHome();
+        };
+        
+        // ======================== Filter by Category ========================
+        window.filterByCategory = (categoryId) => {
+            const category = CATEGORIES.find(c => c.id === categoryId);
+            const filtered = allServices.filter(s => s.category_id === categoryId);
+            const html = `
+                <div class="mb-4">
+                    <button onclick="renderCategories()" class="text-blue-600 mb-2"><i class="fa-solid fa-arrow-right"></i> رجوع للأقسام</button>
+                    <h2 class="font-bold text-xl">${category?.name || categoryId}</h2>
+                    <p class="text-sm text-slate-500">${filtered.length} خدمات</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    ${filtered.map(s => renderServiceCard(s)).join('')}
+                </div>
+            `;
+            document.getElementById("mainContent").innerHTML = html;
+        };
+        
+        window.showDiscountedServices = () => {
+            const discounted = allServices.filter(s => s.discountPercent > 0);
+            const html = `
+                <div class="mb-4">
+                    <button onclick="renderHome()" class="text-blue-600 mb-2"><i class="fa-solid fa-arrow-right"></i> رجوع</button>
+                    <h2 class="font-bold text-xl">🔥 العروض والخصومات</h2>
+                    <p class="text-sm text-slate-500">${discounted.length} عرض حصري</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    ${discounted.map(s => renderServiceCard(s)).join('')}
+                </div>
+            `;
+            document.getElementById("mainContent").innerHTML = html;
+        };
+        
+        // ======================== API Helper ========================
+        const API_URL = window.location.origin;
+        
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const options = { method, headers: { 'Content-Type': 'application/json' } };
+            if (body) options.body = JSON.stringify(body);
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, options);
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: 'فشل الاتصال بالخادم' };
+            }
+        }
+        
+        // ======================== Create Service with Image ========================
+        let cropper = null;
+        
+        window.openImageCropper = (onCropped) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast('حجم الصورة يجب أن يكون أقل من 5MB', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    showModal(`
+                        <h3 class="font-bold text-lg mb-3">✂️ قص الصورة</h3>
+                        <div class="mb-3"><img id="cropImage" src="${event.target.result}" style="max-width:100%;"></div>
+                        <button id="applyCropBtn" class="bg-blue-600 text-white py-2 rounded-xl w-full">تطبيق القص ✅</button>
+                        <p class="text-xs text-slate-500 text-center mt-2">اسحب لتحديد المنطقة (نسبة 1:1)</p>
+                    `);
+                    const img = document.getElementById('cropImage');
+                    if (cropper) cropper.destroy();
+                    cropper = new Cropper(img, {
+                        aspectRatio: 1,
+                        viewMode: 1,
+                        autoCropArea: 0.8,
+                        background: false
+                    });
+                    document.getElementById('applyCropBtn').onclick = () => {
+                        const canvas = cropper.getCroppedCanvas({ width: 800, height: 800 });
+                        canvas.toBlob((blob) => {
+                            onCropped(blob);
+                            document.querySelector(".modal-backdrop").remove();
+                        }, "image/jpeg", 0.85);
+                    };
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        };
+        
+        window.createServiceWithImage = async (serviceData, imageBlob) => {
+            const reader = new FileReader();
+            const imageBase64 = await new Promise((resolve) => {
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(imageBlob);
+            });
+            
+            const result = await apiCall('/api/services/create', 'POST', {
+                uid: currentUser.uid,
+                serviceData: serviceData,
+                imageBase64: imageBase64
+            });
+            
+            if (result.success) {
+                showToast('✅ تم إنشاء الخدمة بنجاح +10 نقاط', 'success');
+                await loadData();
+                renderMyServices();
+                return result.service;
+            } else {
+                showToast(result.error || 'فشل إنشاء الخدمة', 'error');
+                return null;
+            }
+        };
+        
+        window.showAddServiceModal = () => {
+            if (!currentUser) { showToast('الرجاء تسجيل الدخول', 'error'); return; }
+            
+            const catOptions = CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+            const currencyOptions = CURRENCIES.map(c => `<option value="${c.code}">${c.name} (${c.symbol})</option>`).join("");
+            
+            showModal(`
+                <h3 class="font-bold text-lg mb-3">➕ إضافة خدمة جديدة</h3>
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+                    <div><label class="block text-sm font-bold">اسم المنشأة *</label><input id="newEstablishment" class="w-full border rounded-xl p-2" placeholder="مثال: مختبرات العولقي"></div>
+                    <div><label class="block text-sm font-bold">اسم المنتج/الخدمة *</label><input id="newProductName" class="w-full border rounded-xl p-2" placeholder="مثال: فحص غازات الدم ABG"></div>
+                    <div><label class="block text-sm font-bold">القسم *</label><select id="newCat" class="w-full border rounded-xl p-2">${catOptions}</select></div>
+                    <div><label class="block text-sm font-bold">السعر الأساسي *</label><div class="flex gap-2"><input id="newBasePrice" type="number" min="0" step="0.01" class="flex-1 border rounded-xl p-2" placeholder="0"><select id="newCurrency" class="w-1/3 border rounded-xl p-2">${currencyOptions}</select></div></div>
+                    <div><label class="block text-sm font-bold">نسبة الخصم % <span class="text-slate-400 text-xs">(اختياري)</span></label><input id="newDiscount" type="number" min="0" max="100" class="w-full border rounded-xl p-2" placeholder="0" value="0"></div>
+                    <div><label class="block text-sm font-bold">رقم الجوال (واتساب) *</label><input id="newPhone" type="tel" class="w-full border rounded-xl p-2" placeholder="967770000000" value="${currentUser.phone || ''}"></div>
+                    <div><label class="block text-sm font-bold">وصف الخدمة <span class="text-slate-400 text-xs">(اختياري)</span></label><textarea id="newDescription" rows="2" class="w-full border rounded-xl p-2" placeholder="وصف مختصر للخدمة..."></textarea></div>
+                    <div><label class="block text-sm font-bold">صورة الخدمة *</label>
+                        <button id="uploadImageBtn" type="button" class="bg-gray-200 w-full py-2 rounded-xl hover:bg-gray-300"><i class="fa-solid fa-camera"></i> اختر صورة من المعرض</button>
+                        <div id="imagePreviewArea" class="mt-2 hidden"><img id="previewImg" class="w-full h-32 rounded-lg object-cover"><p class="text-xs text-green-600 mt-1">✓ تم اختيار الصورة وقصها</p></div>
+                    </div>
+                    <button id="confirmAddService" class="bg-blue-600 text-white py-3 rounded-xl w-full font-bold">✅ نشر الخدمة</button>
+                </div>
+            `);
+            
+            let selectedImageBlob = null;
+            
+            document.getElementById("uploadImageBtn").onclick = () => {
+                openImageCropper((blob) => {
+                    selectedImageBlob = blob;
+                    const url = URL.createObjectURL(blob);
+                    document.getElementById("imagePreviewArea").classList.remove("hidden");
+                    document.getElementById("previewImg").src = url;
+                    showToast("تم قص الصورة بنجاح", "success");
+                });
+            };
+            
+            document.getElementById("confirmAddService").onclick = async () => {
+                const btn = document.getElementById("confirmAddService");
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري النشر...';
+                
+                const establishment = document.getElementById("newEstablishment").value.trim();
+                const productName = document.getElementById("newProductName").value.trim();
+                const catId = document.getElementById("newCat").value;
+                const basePrice = parseFloat(document.getElementById("newBasePrice").value);
+                const discountPercent = parseFloat(document.getElementById("newDiscount").value) || 0;
+                const currency = document.getElementById("newCurrency").value;
+                const phone = document.getElementById("newPhone").value.trim();
+                const description = document.getElementById("newDescription").value.trim();
+                
+                if (!establishment || !productName || !basePrice || !phone || !selectedImageBlob) {
+                    showToast("الرجاء ملء جميع الحقول الإلزامية", "error");
+                    btn.disabled = false;
+                    btn.innerHTML = '✅ نشر الخدمة';
+                    return;
+                }
+                
+                const cat = CATEGORIES.find(c => c.id === catId);
+                const serviceData = {
+                    establishment, productName, description,
+                    category_id: catId, category_name: cat.name,
+                    basePrice, discountPercent, currency, contact: phone
+                };
+                
+                const result = await createServiceWithImage(serviceData, selectedImageBlob);
+                if (result) document.querySelector(".modal-backdrop")?.remove();
+                btn.disabled = false;
+                btn.innerHTML = '✅ نشر الخدمة';
+            };
+        };
+        
+        // ======================== View Service ========================
+        window.viewService = async (id) => {
+            const service = allServices.find(x => x.id === id);
+            if (!service) return;
+            
+            const isPremium = currentUser?.role === 'premium_user' || currentUser?.role === 'premium_business' || currentUser?.role === 'admin';
+            const currencySym = CURRENCIES.find(c => c.code === service.currency)?.symbol || 'ر.ي';
+            const finalPrice = service.discountPercent > 0 ? service.price : service.basePrice;
+            
+            // Get reviews
+            let reviews = [];
+            try {
+                const reviewsResult = await apiCall(`/api/reviews/${id}?sort=newest`);
+                if (reviewsResult.success) reviews = reviewsResult.reviews;
+            } catch(e) { console.log('Reviews error:', e); }
+            
+            const reviewsHtml = reviews.slice(0, 3).map(r => `
+                <div class="border-b pb-2 mb-2">
+                    <div class="flex justify-between items-start">
+                        <div><p class="font-bold text-sm">${r.userName || 'مستخدم'}</p><div class="text-yellow-500 text-xs">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div></div>
+                        <p class="text-xs text-slate-400">${formatDate(r.createdAt)}</p>
+                    </div>
+                    <p class="text-xs text-slate-600 mt-1">${r.comment || ''}</p>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 text-sm py-2">لا توجد تقييمات بعد</p>';
+            
+            showModal(`
+                <div class="max-h-96 overflow-y-auto">
+                    <img src="${service.image}" class="w-full h-48 object-cover rounded-xl mb-3" onerror="this.src='https://placehold.co/400x300'">
+                    <p class="text-blue-600 text-sm">${service.establishment || 'غير محدد'}</p>
+                    <h2 class="text-xl font-bold">${service.productName || 'غير محدد'}</h2>
+                    <p class="text-slate-500 text-sm mb-2">${service.category_name || 'غير محدد'}</p>
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="text-yellow-500">${'★'.repeat(Math.round(service.avgRating || 0))}${'☆'.repeat(5 - Math.round(service.avgRating || 0))}</div>
+                        <span class="text-sm text-slate-600">${service.avgRating?.toFixed(1) || '0.0'} (${service.reviewCount || 0} تقييم)</span>
+                    </div>
+                    <div class="border-t pt-3 space-y-2">
+                        <div class="flex justify-between"><span class="font-bold">💰 السعر:</span> <span><span class="text-lg font-bold text-green-600">${finalPrice}</span> ${currencySym} ${service.discountPercent > 0 ? `<span class="text-xs text-slate-400 line-through">${service.basePrice}</span>` : ''}</span></div>
+                        <div class="flex justify-between"><span class="font-bold">📞 التواصل:</span> <span>${isPremium ? service.contact : '🔒 للمميزين'}</span></div>
+                        ${service.discountPercent > 0 ? `<div class="flex justify-between"><span class="font-bold">🎉 الخصم:</span> <span class="text-red-500">-${service.discountPercent}%</span></div>` : ''}
+                    </div>
+                    ${service.description ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg"><p class="text-sm">${service.description}</p></div>` : ''}
+                    <div class="mt-4"><h4 class="font-bold mb-2">⭐ التقييمات</h4>${reviewsHtml}</div>
+                    <div class="grid grid-cols-2 gap-2 mt-4">
+                        <button onclick="reserveService('${service.id}')" class="bg-green-500 text-white py-3 rounded-xl font-bold"><i class="fa-solid fa-lock"></i> حجز المنتج</button>
+                        ${isPremium ? `<a href="https://wa.me/${service.contact}" target="_blank" class="bg-green-600 text-white text-center py-3 rounded-xl font-bold"><i class="fa-brands fa-whatsapp"></i> واتساب</a>` : ''}
+                    </div>
+                    ${service.userId === currentUser?.uid ? `<button onclick="deleteService('${service.id}')" class="mt-2 bg-red-600 text-white w-full py-2 rounded-xl text-sm">🗑️ حذف الخدمة</button>` : ''}
+                    ${service.userId !== currentUser?.uid && currentUser?.role !== 'admin' ? `<button onclick="reportItem('service', '${service.id}', '${service.productName}')" class="mt-2 bg-red-100 text-red-600 w-full py-2 rounded-xl text-sm"><i class="fa-solid fa-flag"></i> إبلاغ عن الخدمة</button>` : ''}
+                </div>
+            `);
+        };
+        
+        // ======================== Reserve Service ========================
+        window.reserveService = async (serviceId) => {
+            const service = allServices.find(x => x.id === serviceId);
+            if (!service) return;
+            
+            const depositPoints = Math.ceil(parseFloat(service.price) * 0.15 * 10);
+            
+            showModal(`
+                <h3 class="font-bold text-lg mb-3">📦 حجز المنتج</h3>
+                <div class="bg-blue-50 p-3 rounded-lg mb-3 text-sm">
+                    <p><span class="font-bold">المنتج:</span> ${service.productName}</p>
+                    <p><span class="font-bold">السعر:</span> ${service.price} ${CURRENCIES.find(c => c.code === service.currency)?.symbol || ''}</p>
+                    <p><span class="font-bold">العربون المطلوب:</span> ${depositPoints} نقطة (15%)</p>
+                    <p class="text-xs text-slate-600 mt-2">رصيدك الحالي: ${currentUser?.points || 0} نقطة</p>
+                </div>
+                <div class="mb-3"><label class="block text-sm font-bold">كود خصم <span class="text-slate-400">(اختياري)</span></label><input id="reserveCouponCode" class="w-full border rounded-xl p-2" placeholder="WELCOME50"></div>
+                <button id="confirmReserve" class="bg-green-600 text-white py-3 rounded-xl w-full font-bold">تأكيد الحجز وخصم العربون</button>
+                <p class="text-xs text-slate-500 text-center mt-2">الدفع الحقيقي يتم كاش بعد الاتفاق مع البائع</p>
+            `);
+            
+            document.getElementById('confirmReserve').onclick = async () => {
+                const couponCode = document.getElementById('reserveCouponCode').value.trim();
+                if ((currentUser?.points || 0) < depositPoints) {
+                    showToast('رصيد النقاط غير كافي للحجز', 'error');
+                    return;
+                }
+                
+                const btn = document.getElementById('confirmReserve');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحجز...';
+                
+                const result = await apiCall('/api/orders/reserve', 'POST', {
+                    uid: currentUser.uid,
+                    serviceId: serviceId,
+                    couponCode: couponCode || null
+                });
+                
+                if (result.success) {
+                    currentUser.points -= result.depositPoints;
+                    document.getElementById("points").innerText = currentUser.points;
+                    document.querySelector(".modal-backdrop")?.remove();
+                    showToast('✅ تم الحجز بنجاح', 'success');
+                    setTimeout(() => {
+                        window.open(`https://wa.me/${result.sellerContact}?text=${encodeURIComponent(result.whatsappMsg)}`, '_blank');
+                    }, 500);
+                } else {
+                    showToast(result.error || 'فشل الحجز', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = 'تأكيد الحجز وخصم العربون';
+                }
+            };
+        };
+        
+        // ======================== Delete Service ========================
+        window.deleteService = async (serviceId) => {
+            if (!confirm('هل أنت متأكد من حذف هذه الخدمة؟')) return;
+            try {
+                await deleteDoc(doc(db, 'services', serviceId));
+                showToast('تم حذف الخدمة', 'success');
+                await loadData();
+                renderMyServices();
+            } catch (error) {
+                showToast('فشل حذف الخدمة', 'error');
+            }
+        };
+        
+        // ======================== Profile Modal ========================
+        window.showProfileModal = () => {
+            const isSeller = currentUser?.role === 'premium_business' || currentUser?.role === 'admin';
+            
+            showModal(`
+                <div class="text-center">
+                    <i class="fa-solid fa-circle-user text-6xl text-slate-400"></i>
+                    <h3 class="font-bold text-xl mt-2">${currentUser?.name || 'زائر'}</h3>
+                    <p class="text-slate-500">${currentUser?.phone || 'رقم غير مسجل'}</p>
+                    <div class="mt-2 inline-block px-3 py-1 rounded-full text-sm ${currentUser?.role?.includes('premium') ? 'bg-amber-100 text-amber-700' : 'bg-gray-100'}">
+                        ${currentUser?.role === 'premium_user' ? '⭐ عضو مميز' : currentUser?.role === 'premium_business' ? '🏢 منشأة مميزة' : currentUser?.role === 'admin' ? '⚙️ مشرف' : '👤 عضو عادي'}
+                    </div>
+                    <div class="bg-amber-100 inline-block px-4 py-2 rounded-full mt-3">💎 ${currentUser?.points || 0} نقطة</div>
+                    
+                    <div class="mt-4 border-t pt-4">
+                        <p class="font-bold text-sm">🔗 كود الإحالة الخاص بك</p>
+                        <div class="flex gap-2 mt-1">
+                            <input type="text" value="${currentUser?.referralCode || ''}" class="flex-1 border rounded-lg p-2 text-xs font-mono" readonly>
+                            <button onclick="copyToClipboard('${currentUser?.referralCode}')" class="bg-blue-500 text-white px-3 py-2 rounded-lg"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">✨ كل شخص يسجل بكودك تحصل 50 نقطة!</p>
+                    </div>
+                    
+                    <div class="mt-4 space-y-2">
+                        ${!currentUser?.role?.includes('premium') && currentUser?.role !== 'admin' ? `
+                            <button onclick="requestUpgrade()" class="bg-gradient-to-r from-blue-500 to-purple-500 text-white py-2 rounded-xl w-full font-bold">⬆️ طلب ترقية الحساب</button>
+                        ` : ''}
+                        <button onclick="showReferralDashboard()" class="bg-purple-500 text-white py-2 rounded-xl w-full"><i class="fa-solid fa-users"></i> نظام الإحالات</button>
+                        ${isSeller ? `<button onclick="showSellerDashboard()" class="bg-green-600 text-white py-2 rounded-xl w-full"><i class="fa-solid fa-chart-line"></i> لوحة البائع</button>` : ''}
+                        <button onclick="showMyOrders('buyer')" class="bg-blue-500 text-white py-2 rounded-xl w-full">🛒 طلباتي</button>
+                        <button onclick="showWalletModal()" class="bg-amber-500 text-white py-2 rounded-xl w-full">💰 سجل المحفظة</button>
+                        <button onclick="editProfile()" class="bg-gray-500 text-white py-2 rounded-xl w-full"><i class="fa-solid fa-pen"></i> تعديل الملف الشخصي</button>
+                        ${currentUser?.role === 'admin' ? `<button onclick="showAdminDashboard()" class="bg-slate-800 text-white py-2 rounded-xl w-full"><i class="fa-solid fa-shield-halved"></i> لوحة تحكم المشرف</button>` : ''}
+                    </div>
+                </div>
+            `);
+        };
+        
+        window.editProfile = () => {
+            showModal(`
+                <h3 class="font-bold text-lg mb-3">✏️ تعديل الملف الشخصي</h3>
+                <div class="space-y-3">
+                    <div><label class="block text-sm font-bold">الاسم</label><input id="editName" class="w-full border rounded-xl p-2" value="${currentUser?.name || ''}"></div>
+                    <div><label class="block text-sm font-bold">رقم الجوال</label><input id="editPhone" class="w-full border rounded-xl p-2" value="${currentUser?.phone || ''}"></div>
+                    <button id="saveProfileBtn" class="bg-blue-600 text-white py-2 rounded-xl w-full">حفظ التغييرات</button>
+                </div>
+            `);
+            
+            document.getElementById('saveProfileBtn').onclick = async () => {
+                const newName = document.getElementById('editName').value.trim();
+                const newPhone = document.getElementById('editPhone').value.trim();
+                if (newName) {
+                    await updateDoc(doc(db, 'users', currentUser.uid), { name: newName, phone: newPhone });
+                    currentUser.name = newName;
+                    currentUser.phone = newPhone;
+                    showToast('تم تحديث الملف الشخصي', 'success');
+                    document.querySelector(".modal-backdrop")?.remove();
+                }
+            };
+        };
+        
+        // ======================== Wallet & Orders ========================
+        window.showWalletModal = async () => {
+            const transactionsSnap = await getDocs(query(collection(db, 'wallet_transactions'), where('userId', '==', currentUser.uid), orderBy('createdAt', 'desc'), limit(50)));
+            const transactions = transactionsSnap.docs.map(doc => doc.data());
+            
+            const txHtml = transactions.map(tx => `
+                <div class="border-b p-2 flex justify-between items-center text-sm">
+                    <div><p class="font-bold">${tx.description || tx.type}</p><p class="text-xs text-slate-500">${formatDate(tx.createdAt)}</p></div>
+                    <p class="font-bold ${tx.amount > 0 ? 'text-green-600' : 'text-red-600'}">${tx.amount > 0 ? '+' : ''}${tx.amount}</p>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 p-4">لا توجد حركات</p>';
+            
+            showModal(`
+                <h3 class="font-bold text-lg mb-3">💰 سجل المحفظة</h3>
+                <div class="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-4 rounded-xl mb-3 text-center">
+                    <p class="text-sm">الرصيد الحالي</p>
+                    <p class="text-3xl font-bold">${currentUser?.points || 0} نقطة</p>
+                </div>
+                <div class="max-h-96 overflow-y-auto">${txHtml}</div>
+            `);
+        };
+        
+        window.showMyOrders = async (type = 'buyer') => {
+            const field = type === 'buyer' ? 'buyerId' : 'sellerId';
+            const title = type === 'buyer' ? '🛒 طلباتي' : '📦 طلبات العملاء';
+            
+            const ordersSnap = await getDocs(query(collection(db, 'orders'), where(field, '==', currentUser.uid), orderBy('createdAt', 'desc'), limit(50)));
+            const orders = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            const ordersHtml = orders.map(o => `
+                <div class="border rounded-xl p-3 mb-2 bg-white">
+                    <div class="flex justify-between items-start">
+                        <div><p class="font-bold text-sm">${o.serviceName}</p><p class="text-xs text-slate-500">${formatDate(o.createdAt)}</p></div>
+                        <span class="px-2 py-1 rounded text-xs ${o.status === 'reserved' ? 'bg-yellow-100 text-yellow-700' : o.status === 'confirmed' ? 'bg-blue-100 text-blue-700' : o.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${o.status === 'reserved' ? 'محجوز' : o.status === 'confirmed' ? 'مؤكد' : o.status === 'completed' ? 'مكتمل' : 'ملغي'}</span>
+                    </div>
+                    <div class="flex justify-between text-sm mt-2"><span>السعر: ${o.servicePrice}</span><span>العربون: ${o.depositPoints} نقطة</span></div>
+                    <button onclick="viewOrderDetails('${o.id}')" class="mt-2 bg-blue-500 text-white py-1 rounded text-xs w-full">التفاصيل</button>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 p-4">لا توجد طلبات</p>';
+            
+            showModal(`
+                <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">${title}</h3>
+                    <div class="flex gap-1"><button onclick="showMyOrders('buyer')" class="px-3 py-1 rounded text-xs ${type === 'buyer' ? 'bg-blue-500 text-white' : 'bg-gray-200'}">مشترياتي</button>
+                    <button onclick="showMyOrders('seller')" class="px-3 py-1 rounded text-xs ${type === 'seller' ? 'bg-blue-500 text-white' : 'bg-gray-200'}">مبيعاتي</button></div>
+                </div>
+                <div class="max-h-96 overflow-y-auto">${ordersHtml}</div>
+            `);
+        };
+        
+        window.viewOrderDetails = async (orderId) => {
+            const orderDoc = await getDoc(doc(db, 'orders', orderId));
+            const order = orderDoc.data();
+            if (!order) return;
+            
+            showModal(`
+                <h3 class="font-bold text-lg mb-3">تفاصيل الطلب</h3>
+                <div class="space-y-2">
+                    <div class="flex justify-between"><span>الخدمة:</span><span class="font-bold">${order.serviceName}</span></div>
+                    <div class="flex justify-between"><span>السعر:</span><span>${order.servicePrice} ${order.currency}</span></div>
+                    <div class="flex justify-between"><span>العربون:</span><span>${order.depositPoints} نقطة</span></div>
+                    <div class="flex justify-between"><span>الحالة:</span><span>${order.status === 'reserved' ? 'محجوز' : order.status === 'confirmed' ? 'مؤكد' : order.status === 'completed' ? 'مكتمل' : 'ملغي'}</span></div>
+                    <div class="flex justify-between"><span>التاريخ:</span><span>${formatDate(order.createdAt)}</span></div>
+                    ${order.status === 'reserved' && order.sellerId === currentUser.uid ? `<button onclick="confirmOrder('${orderId}')" class="bg-green-500 text-white py-2 rounded-xl w-full mt-3">تأكيد الطلب</button>` : ''}
+                    ${order.status === 'confirmed' && order.buyerId === currentUser.uid ? `<button onclick="completeOrder('${orderId}')" class="bg-green-600 text-white py-2 rounded-xl w-full mt-3">تم الاستلام</button>` : ''}
+                </div>
+            `);
+        };
+        
+        window.confirmOrder = async (orderId) => {
+            await updateDoc(doc(db, 'orders', orderId), { status: 'confirmed' });
+            showToast('✅ تم تأكيد الطلب', 'success');
+            document.querySelector(".modal-backdrop")?.remove();
+        };
+        
+        window.completeOrder = async (orderId) => {
+            if (!confirm('هل استلمت المنتج/الخدمة فعلاً؟')) return;
+            await updateDoc(doc(db, 'orders', orderId), { status: 'completed' });
+            showToast('✅ تم إتمام الطلب', 'success');
+            document.querySelector(".modal-backdrop")?.remove();
+        };
+        
+        // ======================== Referral Dashboard ========================
+        window.showReferralDashboard = async () => {
+            const stats = await apiCall(`/api/referral/stats/${currentUser.uid}`);
+            const shareLink = `${window.location.origin}?ref=${stats.referralCode}`;
+            const shareMsg = `🎁 انضم لمنصة الخدمات واحصل على 100 نقطة مجاناً!\n\nاستخدم كودي: ${stats.referralCode}\n\n${shareLink}`;
+            
+            showModal(`
+                <h3 class="font-bold text-xl mb-4">🎁 نظام الإحالات</h3>
+                <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-xl mb-4">
+                    <p class="text-sm opacity-90">إجمالي أرباحك من الإحالات</p>
+                    <p class="text-3xl font-bold">${stats.totalEarnings || 0} نقطة</p>
+                    <p class="text-sm mt-1">${stats.totalReferrals || 0} شخص سجل بكودك</p>
+                </div>
+                <div class="bg-blue-50 p-3 rounded-lg mb-4">
+                    <p class="font-bold text-sm mb-2">🔗 كود الإحالة الخاص بك</p>
+                    <div class="flex gap-2 mb-2"><input value="${stats.referralCode}" class="flex-1 border rounded-lg p-2 text-center font-mono font-bold" readonly><button onclick="copyToClipboard('${stats.referralCode}')" class="bg-blue-500 text-white px-4 rounded-lg"><i class="fa-regular fa-copy"></i></button></div>
+                    <button onclick="shareWhatsApp('${encodeURIComponent(shareMsg)}')" class="bg-green-500 text-white py-2 rounded-xl w-full text-sm"><i class="fa-brands fa-whatsapp"></i> مشاركة عبر واتساب</button>
+                </div>
+            `);
+        };
+        
+        window.shareWhatsApp = (msg) => { window.open(`https://wa.me/?text=${msg}`, '_blank'); };
+        
+        // ======================== Upgrade Request ========================
+        window.requestUpgrade = async () => {
+            const existingReq = await getDoc(doc(db, 'upgrade_requests', currentUser.uid));
+            if (existingReq.exists() && existingReq.data().status === 'pending') {
+                showToast('لديك طلب ترقية قيد المراجعة', 'info');
+                return;
+            }
+            
+            showModal(`
+                <h3 class="font-bold text-lg mb-3">⬆️ طلب ترقية الحساب</h3>
+                <p class="text-sm text-slate-600 mb-3">اختر نوع الترقية المطلوبة:</p>
+                <div class="space-y-2">
+                    <button onclick="submitUpgradeRequest('premium_user')" class="bg-blue-500 text-white py-3 rounded-xl w-full text-right"><div class="flex justify-between items-center px-2"><div><p class="font-bold">⭐ عضو مميز</p><p class="text-xs opacity-90">مميزات إضافية للأفراد</p></div><i class="fa-solid fa-crown text-2xl"></i></div></button>
+                    <button onclick="submitUpgradeRequest('premium_business')" class="bg-purple-500 text-white py-3 rounded-xl w-full text-right"><div class="flex justify-between items-center px-2"><div><p class="font-bold">🏢 منشأة مميزة</p><p class="text-xs opacity-90">مميزات للشركات والمتاجر</p></div><i class="fa-solid fa-building text-2xl"></i></div></button>
+                </div>
+                <p class="text-xs text-slate-500 mt-3 text-center">سيتم مراجعة طلبك خلال 24 ساعة</p>
+            `);
+        };
+        
+        window.submitUpgradeRequest = async (requestedRole) => {
+            try {
+                await setDoc(doc(db, 'upgrade_requests', currentUser.uid), {
+                    userId: currentUser.uid, userName: currentUser.name, userPhone: currentUser.phone,
+                    currentRole: currentUser.role, requestedRole: requestedRole,
+                    status: 'pending', createdAt: serverTimestamp()
+                });
+                await apiCall('/api/admin/upgrade-request-webhook', 'POST', {
+                    userId: currentUser.uid, userName: currentUser.name,
+                    currentRole: currentUser.role, requestedRole: requestedRole
+                });
+                document.querySelector(".modal-backdrop")?.remove();
+                showToast('✅ تم إرسال طلب الترقية للمشرف', 'success');
+            } catch (error) { showToast('فشل إرسال الطلب', 'error'); }
+        };
+        
+        // ======================== Seller Dashboard ========================
+        window.showSellerDashboard = async () => {
+            if (currentUser.role === 'user') { showToast('تحتاج ترقية لحساب منشأة', 'info'); requestUpgrade(); return; }
+            
+            const data = await apiCall(`/api/seller/dashboard/${currentUser.uid}`);
+            const s = data.stats || {};
+            
+            showModal(`
+                <h3 class="font-bold text-xl mb-4">📊 لوحة البائع</h3>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="bg-blue-50 p-3 rounded-xl text-center"><p class="text-2xl font-bold text-blue-600">${s.totalServices || 0}</p><p class="text-xs">خدماتي</p></div>
+                    <div class="bg-green-50 p-3 rounded-xl text-center"><p class="text-2xl font-bold text-green-600">${s.completedOrders || 0}</p><p class="text-xs">طلبات مكتملة</p></div>
+                    <div class="bg-amber-50 p-3 rounded-xl text-center"><p class="text-2xl font-bold text-amber-600">${s.pendingOrders || 0}</p><p class="text-xs">طلبات معلقة</p></div>
+                    <div class="bg-purple-50 p-3 rounded-xl text-center"><p class="text-2xl font-bold text-purple-600">${s.avgRating?.toFixed(1) || '0.0'} ⭐</p><p class="text-xs">${s.totalReviews || 0} تقييم</p></div>
+                </div>
+                <div class="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-xl mb-4"><p class="text-sm opacity-90">إجمالي المبيعات</p><p class="text-3xl font-bold">${s.totalRevenue?.toFixed(2) || '0'} ريال</p></div>
+                <div class="space-y-2"><button onclick="showMyOrders('seller')" class="bg-blue-500 text-white py-2 rounded-xl w-full">📦 إدارة الطلبات</button><button onclick="renderMyServices()" class="bg-purple-500 text-white py-2 rounded-xl w-full">📝 إدارة الخدمات</button></div>
+            `);
+        };
+        
+        // ======================== Admin Dashboard ========================
+        window.showAdminDashboard = async () => {
+            if (currentUser.role !== 'admin') { showToast('غير مصرح', 'error'); return; }
+            
+            const stats = await apiCall(`/api/admin/dashboard/stats?adminUid=${currentUser.uid}`);
+            
+            showModal(`
+                <h3 class="font-bold text-xl mb-4">⚙️ لوحة تحكم المشرف</h3>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="bg-blue-50 p-3 rounded-xl text-center"><p class="text-2xl font-bold text-blue-600">${stats.total?.services || 0}</p><p class="text-xs">خدمات</p></div>
+                    <div class="bg-green-50 p-3 rounded-xl text-center"><p class="text-2xl font-bold text-green-600">${stats.total?.users || 0}</p><p class="text-xs">مستخدمين</p></div>
+                    <div class="bg-amber-50 p-3 rounded-xl text-center"><p class="text-2xl font-bold text-amber-600">${stats.total?.orders || 0}</p><p class="text-xs">طلبات</p></div>
+                    <div class="bg-red-50 p-3 rounded-xl text-center"><p class="text-2xl font-bold text-red-600">${stats.total?.pendingReports || 0}</p><p class="text-xs">بلاغات</p></div>
+                </div>
+                <div class="space-y-2">
+                    <button onclick="showPendingServices()" class="bg-blue-600 text-white py-2 rounded-xl w-full">📦 الخدمات قيد المراجعة</button>
+                    <button onclick="showPendingReports()" class="bg-red-600 text-white py-2 rounded-xl w-full">🚨 البلاغات</button>
+                    <button onclick="showAdminUsers()" class="bg-purple-600 text-white py-2 rounded-xl w-full">👥 إدارة المستخدمين</button>
+                    <button onclick="showFinancialReport()" class="bg-emerald-600 text-white py-2 rounded-xl w-full">💰 التقرير المالي</button>
+                </div>
+            `);
+        };
+        
+        window.showPendingServices = async () => {
+            const pending = await apiCall('/api/admin/services/pending');
+            const html = pending.map(s => `
+                <div class="border rounded-lg p-2 mb-2 flex justify-between items-center">
+                    <div><p class="font-bold">${s.productName}</p><p class="text-xs">${s.establishment}</p></div>
+                    <div class="flex gap-1"><button onclick="approveService('${s.id}')" class="bg-green-500 text-white px-2 py-1 rounded text-xs">✓ موافقة</button><button onclick="rejectService('${s.id}')" class="bg-red-500 text-white px-2 py-1 rounded text-xs">✗ رفض</button></div>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500">لا توجد خدمات</p>';
+            showModal(`<h3 class="font-bold text-lg mb-3">📦 خدمات قيد المراجعة</h3><div class="max-h-96 overflow-y-auto">${html}</div>`);
+        };
+        
+        window.approveService = async (serviceId) => {
+            await apiCall(`/api/admin/services/${serviceId}/approve`, 'PUT', { uid: currentUser.uid });
+            showToast('تمت الموافقة', 'success');
+            document.querySelector(".modal-backdrop")?.remove();
+            await loadData();
+        };
+        
+        window.rejectService = async (serviceId) => {
+            await apiCall(`/api/admin/services/${serviceId}/reject`, 'PUT', { uid: currentUser.uid });
+            showToast('تم الرفض', 'success');
+            document.querySelector(".modal-backdrop")?.remove();
+        };
+        
+        window.showPendingReports = async () => {
+            const reports = await apiCall('/api/admin/reports/pending');
+            const html = reports.map(r => `
+                <div class="border rounded-lg p-2 mb-2"><p class="font-bold">${r.reason}</p><p class="text-xs">${r.description}</p><button onclick="resolveReport('${r.id}')" class="bg-blue-500 text-white px-2 py-1 rounded text-xs mt-1">تم الحل</button></div>
+            `).join('') || '<p class="text-center text-slate-500">لا توجد بلاغات</p>';
+            showModal(`<h3 class="font-bold text-lg mb-3">🚨 البلاغات</h3><div class="max-h-96 overflow-y-auto">${html}</div>`);
+        };
+        
+        window.resolveReport = async (reportId) => {
+            await apiCall(`/api/admin/reports/${reportId}/resolve`, 'PUT', { uid: currentUser.uid });
+            showToast('تم حل البلاغ', 'success');
+            document.querySelector(".modal-backdrop")?.remove();
+        };
+        
+        window.showAdminUsers = async () => {
+            showModal(`<h3 class="font-bold text-lg mb-3">👥 إدارة المستخدمين</h3><p class="text-center text-slate-500">جاري التحميل...</p>`);
+            // يمكن إضافة المزيد من وظائف إدارة المستخدمين
+        };
+        
+        window.showFinancialReport = async () => {
+            const today = new Date();
+            const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            const data = await apiCall(`/api/admin/financial-report?adminUid=${currentUser.uid}&startDate=${monthAgo.toISOString()}&endDate=${today.toISOString()}`);
+            
+            showModal(`
+                <h3 class="font-bold text-xl mb-4">💰 التقرير المالي</h3>
+                <p class="text-sm text-slate-600 mb-4">آخر 30 يوم</p>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="bg-green-50 p-3 rounded-xl"><p class="text-xs">النقاط المكتسبة</p><p class="text-xl font-bold text-green-600">${data.points?.earned || 0}</p></div>
+                    <div class="bg-red-50 p-3 rounded-xl"><p class="text-xs">النقاط المصروفة</p><p class="text-xl font-bold text-red-600">${data.points?.spent || 0}</p></div>
+                    <div class="bg-blue-50 p-3 rounded-xl"><p class="text-xs">الطلبات المكتملة</p><p class="text-xl font-bold text-blue-600">${data.orders?.completed || 0}</p></div>
+                    <div class="bg-purple-50 p-3 rounded-xl"><p class="text-xs">معدل التحويل</p><p class="text-xl font-bold text-purple-600">${data.orders?.conversionRate || 0}%</p></div>
+                </div>
+                <div class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-4 rounded-xl mb-4"><p class="text-sm">إجمالي الإيرادات</p><p class="text-3xl font-bold">${data.orders?.totalRevenue?.toFixed(2) || '0'} ريال</p></div>
+            `);
+        };
+        
+        // ======================== Report Item ========================
+        window.reportItem = (targetType, targetId, targetName) => {
+            showModal(`
+                <h3 class="font-bold text-lg mb-3">🚨 الإبلاغ عن ${targetType === 'service' ? 'خدمة' : 'مستخدم'}</h3>
+                <p class="text-sm text-slate-600 mb-3">${targetName}</p>
+                <div class="space-y-3">
+                    <div><label class="block text-sm font-bold mb-1">سبب البلاغ</label><select id="reportReason" class="w-full border rounded-xl p-2"><option value="">اختر السبب</option><option value="spam">محتوى مزعج / سبام</option><option value="fraud">احتيال / نصب</option><option value="inappropriate">محتوى غير لائق</option><option value="fake">معلومات مزيفة</option><option value="other">أخرى</option></select></div>
+                    <div><label class="block text-sm font-bold mb-1">وصف المشكلة</label><textarea id="reportDescription" rows="3" class="w-full border rounded-xl p-2" placeholder="اشرح المشكلة بالتفصيل..."></textarea></div>
+                    <button onclick="submitReport('${targetType}', '${targetId}')" class="bg-red-600 text-white py-2 rounded-xl w-full font-bold">إرسال البلاغ</button>
+                </div>
+            `);
+        };
+        
+        window.submitReport = async (targetType, targetId) => {
+            const reason = document.getElementById('reportReason').value;
+            const description = document.getElementById('reportDescription').value.trim();
+            if (!reason) { showToast('اختر سبب البلاغ', 'error'); return; }
+            
+            const result = await apiCall('/api/reports/create', 'POST', {
+                uid: currentUser.uid, targetType, targetId, reason, description
+            });
+            document.querySelector(".modal-backdrop")?.remove();
+            showToast(result.autoResolved ? '✅ تم اتخاذ إجراء تلقائي' : '✅ تم إرسال بلاغك للمشرف', 'success');
+        };
+        
+        // ======================== Instructions & Privacy ========================
+        window.showInstructions = () => {
+            showModal(`
+                <h3 class="font-bold text-xl mb-4">📖 تعليمات الاستخدام</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="bg-blue-50 p-3 rounded-lg"><p class="font-bold">🎯 كيف تحجز منتج؟</p><ol class="list-decimal list-inside"><li>اختر المنتج المطلوب</li><li>اضغط "حجز المنتج"</li><li>يخصم 15% كنقاط عربون</li><li>تواصل مع البائع عبر واتساب</li></ol></div>
+                    <div class="bg-green-50 p-3 rounded-lg"><p class="font-bold">💎 كيف تكسب نقاط؟</p><ul class="list-disc list-inside"><li>+100 نقطة عند التسجيل</li><li>+10 نقاط عند إضافة خدمة</li><li>+50 نقطة لكل صديق يسجل بكودك</li><li>+5 نقاط عند تقييم منتج</li></ul></div>
+                </div>
+            `);
+        };
+        
+        window.showPrivacyPolicy = () => {
+            showModal(`
+                <h3 class="font-bold text-xl mb-4">🔒 سياسة الخصوصية</h3>
+                <div class="space-y-2 text-sm">
+                    <p>نجمع: الاسم، رقم الجوال، الصور. لا نشارك بياناتك مع طرف ثالث.</p>
+                    <p>البيانات مشفرة في Firebase. لا نخزن كلمات مرور.</p>
+                    <p>التطبيق يحفظ نسخة مشفرة من بياناتك على جهازك.</p>
+                    <p class="bg-blue-50 p-2 rounded-lg mt-3">📞 للاستفسار: واتساب ${ADMIN_WHATSAPP}</p>
+                </div>
+            `);
+        };
+        
+        // ======================== Real-time Listeners ========================
+        let userDataUnsubscribe = null;
+        
+        function initRealtimeListeners() {
+            if (userDataUnsubscribe) userDataUnsubscribe();
+            if (!currentUser) return;
+            
+            userDataUnsubscribe = onSnapshot(doc(db, 'users', currentUser.uid), (doc) => {
+                if (!doc.exists()) return;
+                const newData = doc.data();
+                const oldPoints = currentUser.points;
+                currentUser = { ...currentUser, ...newData };
+                if (newData.points !== oldPoints) {
+                    const diff = newData.points - oldPoints;
+                    if (diff > 0) showToast(`💎 +${diff} نقطة`, 'success');
+                    document.getElementById("points").innerText = currentUser.points;
+                }
+                if (newData.role !== currentUser.role) {
+                    showToast(`🎉 تمت ترقيتك إلى ${newData.role === 'premium_user' ? 'عضو مميز' : 'منشأة مميزة'}!`, 'success');
+                    if (currentUser.role === 'admin') document.getElementById('adminBtn').classList.remove('hidden');
+                }
+            });
+        }
+        
+        // ======================== Start App ========================
+        async function startApp() {
+            try {
+                await initUser();
+                await loadData();
+                initRealtimeListeners();
+                
+                document.getElementById("loader").style.display = "none";
+                document.getElementById("app").classList.remove("hidden");
+                renderHome();
+                
+                if (isOnline) syncPendingData();
+            } catch (error) {
+                console.error('Start failed:', error);
+                const cached = localStorage.getItem('cached_services');
+                if (cached) {
+                    allServices = decryptData(cached) || [];
+                    document.getElementById("loader").style.display = "none";
+                    document.getElementById("app").classList.remove("hidden");
+                    renderHome();
+                    showToast('تم التحميل من النسخة المحفوظة', 'info');
+                } else {
+                    document.getElementById('loaderText').innerText = 'فشل التحميل. تأكد من الاتصال';
+                }
+            }
+        }
+        
+        startApp();
+    </script>
+</body>
+</html>
