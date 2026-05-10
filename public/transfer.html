@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحويل_نقاط</title>
+    <title>تحويل_النقاط</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -17,18 +17,40 @@
     <div class="max-w-md mx-auto p-4">
         <div class="bg-white rounded-2xl shadow-lg p-6">
             <div class="text-center mb-6">
-                <i class="fa-solid fa-money-bill-wave text-4xl text-yellow-500"></i>
-                <h1 class="text-2xl font-bold mt-2">تحويل_نقاط</h1>
-                <p class="text-slate-500">انقل_نقاطك_بسهولة</p>
+                <i class="fa-solid fa-exchange-alt text-4xl text-green-500"></i>
+                <h1 class="text-2xl font-bold mt-2">تحويل_النقاط</h1>
+                <p class="text-slate-500">حول_نقاطك_لأصدقائك</p>
             </div>
-            <div id="content">
-                <div class="text-center p-4"><div class="bg-blue-50 p-3 rounded-xl mb-4"><p class="text-sm">رصيدك</p><p class="text-3xl font-bold text-blue-600" id="balance">0</p></div><input type="text" id="to" class="w-full border rounded-xl p-2 mb-2" placeholder="معرف المستلم"><input type="number" id="amount" class="w-full border rounded-xl p-2 mb-2" placeholder="المبلغ"><button onclick="sendTransfer()" class="bg-green-500 text-white p-2 rounded-xl w-full">تحويل</button><div id="msg"></div></div>
+            <div id="pageContent">
+                <p class='text-center text-slate-500'>محتوى الصفحة قيد الإنشاء...</p>
             </div>
         </div>
         <div class="mt-4 text-center">
             <a href="/" class="text-teal-600 text-sm">← العودة للرئيسية</a>
         </div>
     </div>
-    <script src="/transfer.js"></script>
+    <script>
+        const API_URL = window.location.origin;
+        const PAGE_ID = 'transfer';
+        
+        
+async function loadPageData() {
+    try {
+        const response = await fetch(`${API_URL}/api/page-data/transfer`);
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('pageContent').innerHTML = data.html;
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+        
+        // تحميل البيانات تلقائياً
+        if (typeof loadPageData === 'function') {
+            loadPageData();
+        }
+    </script>
 </body>
 </html>
