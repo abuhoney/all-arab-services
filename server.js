@@ -195,3 +195,57 @@ app.listen(PORT, () => {
     console.log(`📁 APIs directory: ${APIS_DIR}`);
     console.log(`✅ Ready to accept dynamic APIs from bot`);
 });
+
+
+// ========== نظام الأزرار الديناميكية ==========
+
+// تخزين الأزرار الديناميكية في الذاكرة
+let dynamicButtons = [];
+
+// API: جلب جميع الأزرار الديناميكية
+app.get('/api/dynamic-buttons', (req, res) => {
+    res.json(dynamicButtons);
+});
+
+// API: إضافة زر ديناميكي
+app.post('/api/add-dynamic-button', (req, res) => {
+    const { id, title, url, icon, color } = req.body;
+    
+    const newButton = {
+        id: id || `btn_${Date.now()}`,
+        title,
+        url,
+        icon: icon || 'fa-circle-info',
+        color: color || 'teal'
+    };
+    
+    dynamicButtons.push(newButton);
+    
+    // حفظ في Firebase
+    const buttonsRef = db.collection('dynamic_buttons').doc(newButton.id);
+    buttonsRef.set(newButton);
+    
+    res.json({ success: true, button: newButton });
+});
+
+// API: حذف زر ديناميكي
+app.delete('/api/delete-dynamic-button/:id', async (req, res) => {
+    const { id } = req.params;
+    dynamicButtons = dynamicButtons.filter(b => b.id !== id);
+    
+    await db.collection('dynamic_buttons').doc(id).delete();
+    res.json({ success: true });
+});
+
+// تحميل الأزرار المحفوظة
+async function loadDynamicButtons() {
+    try {
+        const snapshot = await db.collection('dynamic_buttons').get();
+        dynamicButtons = snapshot.docs.map(doc => doc.data());
+        console.log(`Loaded ${dynamicButtons.length} dynamic buttons`);
+    } catch (error) {
+        console.error('Error loading buttons:', error);
+    }
+}
+
+loadDynamicButtons();
