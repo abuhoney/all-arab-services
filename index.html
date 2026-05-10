@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>منصة الخدمات المتكاملة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        body { background: #f0f2f5; }
+        .card-hover { transition: all 0.2s; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+        .modal-backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 24px; max-width: 90%; width: 500px; max-height: 90vh; overflow-y: auto; padding: 20px; }
+        .nav-btn.active { color: #0d9488; }
+    </style>
+</head>
+<body>
+
+    <div id="loader" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
+        <div class="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <h2 class="text-xl font-bold">منصة الخدمات</h2>
+        <p class="text-slate-500">جاري التحميل...</p>
+    </div>
+
+    <div id="app" class="max-w-5xl mx-auto h-screen flex flex-col hidden">
+        <header class="bg-white shadow-md px-4 py-3 sticky top-0 z-30 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-cubes text-2xl text-teal-600"></i>
+                <h1 class="text-xl font-bold">منصة الخدمات</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                    <i class="fa-solid fa-coins"></i> <span id="points">0</span>
+                </div>
+                <button id="profileBtn" class="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-user text-slate-600"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="bg-white px-4 pb-3 shadow-sm">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute right-4 top-3 text-slate-400"></i>
+                <input type="text" id="searchInput" placeholder="ابحث عن منشأة، منتج، خدمة..." class="w-full bg-gray-100 border-none rounded-full py-3 pr-12 pl-4 focus:ring-2 focus:ring-teal-500">
+            </div>
+        </div>
+
+        <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+
+        <nav class="bg-white shadow-inner sticky bottom-0 grid grid-cols-5 text-center py-2 border-t">
+            <button data-page="home" class="nav-btn flex flex-col items-center justify-center text-teal-600"><i class="fa-solid fa-house text-xl"></i><span class="text-xs">الرئيسية</span></button>
+            <button data-page="categories" class="nav-btn flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-table-cells-large text-xl"></i><span class="text-xs">الأقسام</span></button>
+            <button id="addBtn" class="bg-teal-600 text-white rounded-full w-14 h-14 -mt-6 shadow-lg mx-auto flex items-center justify-center border-4 border-gray-100"><i class="fa-solid fa-plus text-2xl"></i></button>
+            <button data-page="favorites" class="nav-btn flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-heart text-xl"></i><span class="text-xs">المفضلة</span></button>
+            <button data-page="myServices" class="nav-btn flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-box text-xl"></i><span class="text-xs">خدماتي</span></button>
+        </nav>
+        
+        <!-- الأزرار الديناميكية - سيتم إضافتها تلقائياً من البوت -->
+        <div id="dynamicButtons" class="grid grid-cols-4 gap-2 py-2 px-4 bg-white border-t text-xs"></div>
+    </div>
+
+    <div id="modalRoot"></div>
+    <div id="toastRoot" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50"></div>
+
+    <script>
+        // ========== المتغيرات العامة ==========
+        let currentUser = null;
+        let allServices = [];
+        let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+        
+        const API_URL = window.location.origin;
+        
+        // ========== دوال مساعدة ==========
+        function showToast(msg, type = "success") {
+            const toast = document.createElement("div");
+            toast.className = `px-4 py-2 rounded-xl shadow-lg text-white text-sm ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`;
+            toast.innerHTML = `<i class="fa-${type === 'success' ? 'solid fa-check' : type === 'error' ? 'solid fa-exclamation' : 'solid fa-info'} ml-2"></i>${msg}`;
+            document.getElementById("toastRoot").innerHTML = "";
+            document.getElementById("toastRoot").appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        function showModal(content) {
+            const modalDiv = document.createElement('div');
+            modalDiv.className = 'modal-backdrop';
+            modalDiv.innerHTML = `<div class="modal-content">${content}<button onclick="this.closest('.modal-backdrop').remove()" class="absolute top-3 left-3 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-times"></i></button></div>`;
+            modalDiv.onclick = (e) => { if (e.target === modalDiv) modalDiv.remove(); };
+            document.getElementById("modalRoot").innerHTML = "";
+            document.getElementById("modalRoot").appendChild(modalDiv);
+        }
+        
+        // ========== تحميل الخدمات ==========
+        async function loadServices() {
+            try {
+                const response = await fetch(`${API_URL}/api/services`);
+                allServices = await response.json();
+                localStorage.setItem('cached_services', JSON.stringify(allServices));
+            } catch(e) {
+                const cached = localStorage.getItem('cached_services');
+                if (cached) allServices = JSON.parse(cached);
+            }
+        }
+        
+        // ========== تحميل المستخدم ==========
+        async function loadCurrentUser() {
+            let userId = localStorage.getItem('userId');
+            if (!userId) {
+                userId = 'user_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('userId', userId);
+            }
+            try {
+                const response = await fetch(`${API_URL}/api/user/${userId}`);
+                if (response.ok) {
+                    currentUser = await response.json();
+                } else {
+                    currentUser = { userId: userId, name: 'زائر جديد', points: 100, role: 'user' };
+                }
+            } catch(e) {
+                currentUser = { userId: userId, name: 'زائر جديد', points: 100, role: 'user' };
+            }
+            document.getElementById('points').innerText = currentUser.points || 0;
+        }
+        
+        // ========== عرض الخدمات ==========
+        function renderServiceCard(service) {
+            return `
+                <div class="bg-white rounded-xl shadow-md overflow-hidden card-hover cursor-pointer" onclick="viewService('${service.id}')">
+                    <img src="${service.image || 'https://placehold.co/400x300'}" class="w-full h-32 object-cover" onerror="this.src='https://placehold.co/400x300'">
+                    <div class="p-3">
+                        <h3 class="font-bold text-sm">${service.productName || 'خدمة'}</h3>
+                        <p class="text-xs text-slate-600">${service.establishment || ''}</p>
+                        <p class="text-teal-600 font-bold mt-1">${service.price || 0} ${service.currency || 'YER'}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderHome() {
+            const html = `
+                <div class="bg-gradient-to-r from-teal-500 to-blue-600 text-white p-5 rounded-2xl mb-6">
+                    <h2 class="text-2xl font-bold mb-1">مرحباً ${currentUser?.name || 'زائر'} 👋</h2>
+                    <p class="text-sm opacity-90">⭐ رصيدك: ${currentUser?.points || 0} نقطة</p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    ${allServices.slice(0, 12).map(s => renderServiceCard(s)).join('') || '<p class="col-span-full text-center">لا توجد خدمات</p>'}
+                </div>
+            `;
+            document.getElementById("mainContent").innerHTML = html;
+            setActiveNav("home");
+        }
+        
+        function renderCategories() {
+            const categories = [
+                { id: "health", name: "🏥 صحة", icon: "fa-hospital-user" },
+                { id: "finance", name: "💰 مالية", icon: "fa-chart-line" },
+                { id: "hotels", name: "🏨 فنادق", icon: "fa-hotel" },
+                { id: "restaurants", name: "🍽️ مطاعم", icon: "fa-utensils" },
+                { id: "fashion", name: "👗 أزياء", icon: "fa-shirt" },
+                { id: "realestate", name: "🏠 عقارات", icon: "fa-building" },
+                { id: "education", name: "📚 تعليم", icon: "fa-graduation-cap" },
+                { id: "services", name: "🛠️ خدمات", icon: "fa-wrench" }
+            ];
+            const html = `<div class="grid grid-cols-2 gap-3">${categories.map(c => `<button onclick="filterByCategory('${c.id}')" class="bg-white p-4 rounded-xl shadow text-center"><i class="fa-solid ${c.icon} text-2xl text-teal-600 mb-1"></i><p class="font-bold">${c.name}</p></button>`).join('')}</div>`;
+            document.getElementById("mainContent").innerHTML = html;
+            setActiveNav("categories");
+        }
+        
+        function filterByCategory(catId) {
+            const filtered = allServices.filter(s => s.category_id === catId);
+            document.getElementById("mainContent").innerHTML = `<div class="grid grid-cols-2 gap-3">${filtered.map(s => renderServiceCard(s)).join('') || '<p class="col-span-full text-center">لا توجد خدمات</p>'}</div><button onclick="renderCategories()" class="mt-4 text-teal-600">← رجوع</button>`;
+        }
+        
+        function renderFavorites() {
+            const favServices = allServices.filter(s => favorites.includes(s.id));
+            document.getElementById("mainContent").innerHTML = `<div class="grid grid-cols-2 gap-3">${favServices.map(s => renderServiceCard(s)).join('') || '<p class="col-span-full text-center">لا توجد مفضلات</p>'}</div>`;
+            setActiveNav("favorites");
+        }
+        
+        function renderMyServices() {
+            const myServices = allServices.filter(s => s.userId === currentUser?.userId);
+            document.getElementById("mainContent").innerHTML = `<div class="grid grid-cols-2 gap-3">${myServices.map(s => renderServiceCard(s)).join('') || '<p class="col-span-full text-center">لم تضف أي خدمة بعد</p>'}</div>`;
+            setActiveNav("myServices");
+        }
+        
+        function setActiveNav(page) {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.dataset.page === page) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+        
+        function viewService(id) {
+            const service = allServices.find(s => s.id === id);
+            if (!service) return;
+            showModal(`
+                <img src="${service.image}" class="w-full h-48 object-cover rounded-xl mb-3">
+                <h2 class="text-xl font-bold">${service.productName}</h2>
+                <p class="text-slate-600">${service.establishment}</p>
+                <p class="text-teal-600 font-bold text-xl mt-2">${service.price} ${service.currency}</p>
+                <button onclick="window.open('https://wa.me/${service.contact}?text=أريد%20الاستفسار%20عن%20${encodeURIComponent(service.productName)}', '_blank')" class="mt-4 bg-green-500 text-white py-2 rounded-xl w-full"><i class="fa-brands fa-whatsapp"></i> تواصل عبر واتساب</button>
+            `);
+        }
+        
+        // ========== تحميل الأزرار الديناميكية ==========
+        async function loadDynamicButtons() {
+            try {
+                const response = await fetch(`${API_URL}/api/dynamic-buttons`);
+                const buttons = await response.json();
+                const container = document.getElementById('dynamicButtons');
+                if (buttons.length > 0) {
+                    container.innerHTML = buttons.map(btn => `
+                        <button onclick="window.location.href='${btn.url}'" class="bg-${btn.color || 'teal'}-50 text-${btn.color || 'teal'}-600 py-2 rounded-xl text-sm">
+                            <i class="fa-solid ${btn.icon}"></i> ${btn.title}
+                        </button>
+                    `).join('');
+                }
+            } catch(e) { console.log('No dynamic buttons'); }
+        }
+        
+        // ========== الأحداث ==========
+        document.getElementById("addBtn").onclick = () => showToast('سيتم إضافة هذه الميزة قريباً', 'info');
+        document.getElementById("profileBtn").onclick = () => {
+            showModal(`
+                <div class="text-center">
+                    <i class="fa-solid fa-circle-user text-6xl text-slate-400"></i>
+                    <h3 class="font-bold text-xl mt-2">${currentUser?.name || 'زائر'}</h3>
+                    <p class="text-slate-500">${currentUser?.phone || 'رقم غير مسجل'}</p>
+                    <div class="bg-amber-100 inline-block px-4 py-2 rounded-full mt-3">⭐ ${currentUser?.points || 0} نقطة</div>
+                    <div class="mt-4 space-y-2">
+                        <button onclick="showToast('سيتم إضافة المزيد قريباً', 'info')" class="bg-teal-500 text-white py-2 rounded-xl w-full">✏️ تعديل الملف الشخصي</button>
+                    </div>
+                </div>
+            `);
+        };
+        
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.onclick = () => {
+                const page = btn.dataset.page;
+                if (page === 'home') renderHome();
+                else if (page === 'categories') renderCategories();
+                else if (page === 'favorites') renderFavorites();
+                else if (page === 'myServices') renderMyServices();
+            };
+        });
+        
+        document.getElementById("searchInput").addEventListener("input", (e) => {
+            const term = e.target.value.trim().toLowerCase();
+            if (!term) return renderHome();
+            const filtered = allServices.filter(s => s.productName?.toLowerCase().includes(term) || s.establishment?.toLowerCase().includes(term));
+            document.getElementById("mainContent").innerHTML = `<div class="grid grid-cols-2 gap-3">${filtered.map(s => renderServiceCard(s)).join('') || '<p class="col-span-full text-center">لا توجد نتائج</p>'}</div>`;
+        });
+        
+        // ========== بدء التشغيل ==========
+        async function startApp() {
+            await loadCurrentUser();
+            await loadServices();
+            await loadDynamicButtons();
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("app").classList.remove("hidden");
+            renderHome();
+        }
+        
+        startApp();
+    </script>
+</body>
+</html>
