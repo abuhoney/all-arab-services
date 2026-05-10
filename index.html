@@ -384,6 +384,7 @@
                             <h3 class="font-bold text-lg">🗂️ تصفح الأقسام</h3>
                         </div>
                         <div class="grid grid-cols-4 gap-3">
+                <a href="/transfer.html" class="bg-white p-4 rounded-xl shadow text-center hover:shadow-md transition"><i class="fa-solid fa-money-bill-wave text-2xl text-teal-600 mb-1"></i><p class="text-sm font-bold">تحويل_نقاط</p></a>
                             ${CATEGORIES.slice(0, 8).map(c => `
                                 <button onclick="filterByCategory('${c.id}')" class="bg-white p-3 rounded-xl shadow text-center hover:shadow-md transition">
                                     <i class="fa-solid ${c.icon} text-xl text-${c.color}-600 mb-1"></i>
