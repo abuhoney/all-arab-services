@@ -1,19 +1,18 @@
 // transfer.js - تم إنشاؤه بواسطة البوت
 const API_URL = window.location.origin;
 
-
-async function loadPage() {
+async function sendRequest(endpoint, data) {
     try {
-        const response = await fetch(`${API_URL}/api/page-data/transfer`);
-        const data = await response.json();
-        if (data.success) {
-            document.getElementById('content').innerHTML = data.html;
-        }
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return await response.json();
     } catch(e) {
         console.error(e);
+        return { success: false, error: e.message };
     }
 }
-loadPage();
 
-
-console.log("✅ transfer loaded");
+console.log('✅ transfer.js loaded');
