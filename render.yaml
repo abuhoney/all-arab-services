@@ -27,5 +27,5 @@ services:
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
       - key: WEB_URL
-        value: https://all-arab-services-750ad-default-rtdb.europe-west1.firebasedatabase.app
+        value: https://all-arab-services.onrender.com
     autoDeploy: true
