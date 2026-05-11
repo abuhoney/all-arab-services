@@ -1,0 +1,34 @@
+{
+  "name": "news-bot-minimal",
+  "version": "3.0.0",
+  "description": "نظام بوت الأخبار - نسخة أساسية",
+  "main": "news-bot.js",
+  "scripts": {
+    "start": "node news-bot.js",
+    "dev": "nodemon news-bot.js",
+    "server": "node server.js",
+    "init-categories": "node init-categories.js",
+    "setup": "npm install"
+  },
+  "dependencies": {
+    "telegraf": "4.15.3",
+    "firebase-admin": "11.11.0",
+    "express": "4.18.2",
+    "axios": "1.6.7",
+    "dotenv": "16.4.5",
+    "cors": "2.8.5",
+    "compression": "1.7.4",
+    "helmet": "7.1.0",
+    "express-rate-limit": "7.2.0",
+    "uuid": "9.0.1",
+    "sanitize-html": "2.12.1",
+    "moment": "2.30.1",
+    "lodash": "4.17.21"
+  },
+  "devDependencies": {
+    "nodemon": "3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

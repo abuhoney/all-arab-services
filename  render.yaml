@@ -1,0 +1,17 @@
+# render.yaml
+services:
+  - type: web
+    name: news-bot-system
+    runtime: node
+    buildCommand: npm install && pip3 install -r requirements.txt
+    startCommand: node news-bot.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_ID
+        value: "7082122839"
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+    autoDeploy: true

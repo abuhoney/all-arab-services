@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>آخر الأخبار | منصة الخدمات المتكاملة</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 'cairo': ['Cairo', 'sans-serif'] },
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#7c3aed',
+                        accent: '#06b6d4',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            min-height: 100vh;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .news-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .news-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .category-badge {
+            transition: all 0.3s ease;
+        }
+        
+        .category-badge:hover {
+            transform: scale(1.05);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="font-cairo antialiased">
+
+    <!-- Header -->
+    <header class="glass sticky top-0 z-40 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                        <i class="fa-solid fa-newspaper text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            آخر الأخبار
+                        </h1>
+                        <p class="text-xs text-slate-500">News Platform</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <button id="refreshBtn" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+                        <i class="fa-solid fa-sync-alt text-slate-600"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Search & Categories -->
+    <div class="sticky top-[73px] z-30 bg-white/95 backdrop-blur-sm shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <!-- Search Bar -->
+            <div class="relative mb-4">
+                <i class="fa-solid fa-search absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="searchInput" 
+                       placeholder="🔍 ابحث في الأخبار..." 
+                       class="w-full bg-gray-100 border-0 rounded-full py-3 pr-12 pl-4 focus:ring-2 focus:ring-blue-500 transition text-right"/>
+                <button id="clearSearch" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 hidden">
+                    <i class="fa-solid fa-times-circle"></i>
+                </button>
+            </div>
+            
+            <!-- Categories -->
+            <div id="categoriesContainer" class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <button onclick="filterByCategory('all')" 
+                        class="category-badge px-4 py-2 rounded-full text-sm font-bold bg-blue-500 text-white whitespace-nowrap flex-shrink-0">
+                    📰 الكل
+                </button>
+                <!-- Dynamic categories will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- News Grid -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div id="newsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Skeleton Loading -->
+            <div class="col-span-full text-center py-12" id="loadingState">
+                <div class="inline-block">
+                    <div class="skeleton h-48 w-96 rounded-xl mb-4"></div>
+                    <div class="skeleton h-4 w-64 rounded mb-2"></div>
+                    <div class="skeleton h-4 w-48 rounded"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Load More -->
+        <div id="loadMoreContainer" class="text-center mt-8 hidden">
+            <button onclick="loadMoreNews()" 
+                    class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-full font-bold hover:shadow-lg transition">
+                تحميل المزيد <i class="fa-solid fa-arrow-down mr-2"></i>
+            </button>
+        </div>
+        
+        <!-- No Results -->
+        <div id="noResults" class="text-center py-16 hidden">
+            <i class="fa-solid fa-newspaper text-6xl text-slate-300 mb-4"></i>
+            <p class="text-slate-500 text-lg">لا توجد أخبار متاحة</p>
+            <p class="text-slate-400 text-sm">جاري تحديث المحتوى...</p>
+        </div>
+    </main>
+
+    <!-- News Detail Modal -->
+    <div id="newsModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-xl" id="modalTitle"></h3>
+                <button onclick="closeNewsModal()" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div id="modalCategory" class="mb-3"></div>
+                <div id="modalContent" class="prose max-w-none text-lg leading-relaxed"></div>
+                <div id="modalMeta" class="mt-4 pt-4 border-t text-sm text-slate-500"></div>
+                <div class="mt-6 flex gap-3">
+                    <button onclick="shareNews(currentNewsId)" 
+                            class="flex-1 bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-600 transition">
+                        <i class="fa-brands fa-whatsapp ml-2"></i> مشاركة
+                    </button>
+                    <button onclick="copyNewsLink(currentNewsId)" 
+                            class="flex-1 bg-blue-500 text-white py-3 rounded-xl font-bold hover:bg-blue-600 transition">
+                        <i class="fa-solid fa-link ml-2"></i> نسخ الرابط
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase & Main Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getFirestore, collection, query, where, orderBy, limit, getDocs, startAfter, doc, updateDoc, increment, onSnapshot } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js';
+        
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBm-ZwOv8oPd_0rms_2oesGz3fDmt5ogvA",
+            authDomain: "all-arab-services-750ad.firebaseapp.com",
+            projectId: "all-arab-services-750ad",
+            storageBucket: "all-arab-services-750ad.firebasestorage.app",
+            messagingSenderId: "1002499268790",
+            appId: "1:1002499268790:web:9437bee4f4df9f93adc617"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // State
+        let allNews = [];
+        let filteredNews = [];
+        let categories = [];
+        let currentCategory = 'all';
+        let searchQuery = '';
+        let lastDoc = null;
+        let hasMore = true;
+        let isLoading = false;
+        const ITEMS_PER_PAGE = 12;
+        
+        // Load Categories
+        async function loadCategories() {
+            try {
+                const catsSnap = await getDocs(collection(db, 'news_categories'));
+                categories = catsSnap.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                renderCategories();
+            } catch (error) {
+                console.error('Load categories error:', error);
+            }
+        }
+        
+        function renderCategories() {
+            const container = document.getElementById('categoriesContainer');
+            let html = `<button onclick="filterByCategory('all')" 
+                        class="category-badge px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap flex-shrink-0 ${currentCategory === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-slate-700'}">
+                        📰 الكل
+                    </button>`;
+            
+            categories.forEach(cat => {
+                const count = allNews.filter(n => n.category_id === cat.id).length;
+                html += `
+                    <button onclick="filterByCategory('${cat.id}')" 
+                            class="category-badge px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap flex-shrink-0 ${currentCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-slate-700'}">
+                        ${cat.icon || '📌'} ${cat.name} ${count > 0 ? `(${count})` : ''}
+                    </button>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Load News
+        async function loadNews(reset = true) {
+            if (isLoading) return;
+            isLoading = true;
+            
+            if (reset) {
+                allNews = [];
+                lastDoc = null;
+                hasMore = true;
+            }
+            
+            document.getElementById('loadingState').classList.remove('hidden');
+            
+            try {
+                let q = query(
+                    collection(db, 'news'),
+                    where('status', '==', 'approved'),
+                    orderBy('createdAt', 'desc'),
+                    limit(ITEMS_PER_PAGE)
+                );
+                
+                if (lastDoc) {
+                    q = query(
+                        collection(db, 'news'),
+                        where('status', '==', 'approved'),
+                        orderBy('createdAt', 'desc'),
+                        startAfter(lastDoc),
+                        limit(ITEMS_PER_PAGE)
+                    );
+                }
+                
+                const snapshot = await getDocs(q);
+                const newsData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate?.() || new Date()
+                }));
+                
+                if (reset) {
+                    allNews = newsData;
+                } else {
+                    allNews = [...allNews, ...newsData];
+                }
+                
+                lastDoc = snapshot.docs[snapshot.docs.length - 1];
+                hasMore = snapshot.docs.length === ITEMS_PER_PAGE;
+                
+                document.getElementById('loadingState').classList.add('hidden');
+                
+                if (newsData.length === 0 && reset) {
+                    document.getElementById('noResults').classList.remove('hidden');
+                } else {
+                    document.getElementById('noResults').classList.add('hidden');
+                }
+                
+                applyFilters();
+                
+                if (hasMore) {
+                    document.getElementById('loadMoreContainer').classList.remove('hidden');
+                } else {
+                    document.getElementById('loadMoreContainer').classList.add('hidden');
+                }
+                
+            } catch (error) {
+                console.error('Load news error:', error);
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('noResults').classList.remove('hidden');
+            } finally {
+                isLoading = false;
+            }
+        }
+        
+        function applyFilters() {
+            filteredNews = [...allNews];
+            
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                filteredNews = filteredNews.filter(n => 
+                    (n.title && n.title.toLowerCase().includes(q)) ||
+                    (n.content && n.content.toLowerCase().includes(q))
+                );
+            }
+            
+            if (currentCategory !== 'all') {
+                filteredNews = filteredNews.filter(n => n.category_id === currentCategory);
+            }
+            
+            renderNews();
+            renderCategories();
+        }
+        
+        function renderNews() {
+            const grid = document.getElementById('newsGrid');
+            
+            if (filteredNews.length === 0) {
+                document.getElementById('noResults').classList.remove('hidden');
+                return;
+            }
+            
+            document.getElementById('noResults').classList.add('hidden');
+            
+            grid.innerHTML = filteredNews.map((news, index) => `
+                <div class="news-card bg-white rounded-2xl shadow-md overflow-hidden cursor-pointer fade-in"
+                     style="animation-delay: ${index * 0.1}s"
+                     onclick="viewNews('${news.id}')">
+                    ${news.image ? `
+                        <img src="${news.image}" class="w-full h-48 object-cover" 
+                             onerror="this.src='https://placehold.co/600x400?text=📰+خبر'">
+                    ` : `
+                        <div class="w-full h-48 bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                            <i class="fa-solid fa-newspaper text-white text-5xl"></i>
+                        </div>
+                    `}
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-600 font-bold">
+                                ${getCategoryName(news.category_id)}
+                            </span>
+                            <span class="text-xs text-slate-400">
+                                ${formatDate(news.createdAt)}
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 line-clamp-2">${news.title || 'خبر بدون عنوان'}</h3>
+                        <p class="text-sm text-slate-600 line-clamp-3">${stripHtml(news.content || '')}</p>
+                        <div class="flex justify-between items-center mt-4 pt-3 border-t">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-400">
+                                    <i class="fa-regular fa-eye ml-1"></i> ${news.views || 0}
+                                </span>
+                                <span class="text-xs text-slate-400">
+                                    <i class="fa-regular fa-share-from-square ml-1"></i> ${news.shares || 0}
+                                </span>
+                            </div>
+                            <button class="text-blue-600 text-sm font-bold">
+                                اقرأ المزيد <i class="fa-solid fa-arrow-left mr-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function getCategoryName(categoryId) {
+            const cat = categories.find(c => c.id === categoryId);
+            return cat ? cat.name : 'أخبار';
+        }
+        
+        function stripHtml(html) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || '';
+        }
+        
+        function formatDate(date) {
+            if (!date) return '';
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (minutes < 1) return 'الآن';
+            if (minutes < 60) return `منذ ${minutes} دقيقة`;
+            if (hours < 24) return `منذ ${hours} ساعة`;
+            if (days < 7) return `منذ ${days} يوم`;
+            return date.toLocaleDateString('ar-EG');
+        }
+        
+        // View News Detail
+        window.viewNews = async (newsId) => {
+            const news = allNews.find(n => n.id === newsId);
+            if (!news) return;
+            
+            // Increment views
+            try {
+                await updateDoc(doc(db, 'news', newsId), {
+                    views: increment(1)
+                });
+            } catch (e) {}
+            
+            window.currentNewsId = newsId;
+            
+            document.getElementById('modalTitle').textContent = news.title;
+            document.getElementById('modalCategory').innerHTML = `
+                <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-600 text-sm font-bold">
+                    ${getCategoryName(news.category_id)}
+                </span>
+                <span class="text-sm text-slate-400 mr-3">${formatDate(news.createdAt)}</span>
+            `;
+            document.getElementById('modalContent').innerHTML = news.content;
+            document.getElementById('modalMeta').innerHTML = `
+                <div class="flex gap-4">
+                    <span><i class="fa-regular fa-eye ml-1"></i> ${news.views || 0} مشاهدة</span>
+                    <span><i class="fa-regular fa-share-from-square ml-1"></i> ${news.shares || 0} مشاركة</span>
+                </div>
+            `;
+            
+            document.getElementById('newsModal').classList.add('flex');
+            document.getElementById('newsModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        };
+        
+        window.closeNewsModal = () => {
+            document.getElementById('newsModal').classList.add('hidden');
+            document.getElementById('newsModal').classList.remove('flex');
+            document.body.style.overflow = '';
+        };
+        
+        window.shareNews = async (newsId) => {
+            const news = allNews.find(n => n.id === newsId);
+            if (!news) return;
+            
+            const shareText = `📰 *${news.title}*\n\n${stripHtml(news.content).substring(0, 200)}...\n\n🔗 للمزيد: ${window.location.origin}/news.html?id=${newsId}\n🤖 تابعنا: @your_bot_username`;
+            
+            try {
+                await updateDoc(doc(db, 'news', newsId), {
+                    shares: increment(1)
+                });
+            } catch (e) {}
+            
+            window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+        };
+        
+        window.copyNewsLink = (newsId) => {
+            const link = `${window.location.origin}/news.html?id=${newsId}`;
+            navigator.clipboard.writeText(link);
+            showToast('تم نسخ الرابط 📋', 'success');
+        };
+        
+        // Filters
+        window.filterByCategory = (categoryId) => {
+            currentCategory = categoryId;
+            applyFilters();
+        };
+        
+        // Search
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            document.getElementById('clearSearch').classList.toggle('hidden', !searchQuery);
+            applyFilters();
+        });
+        
+        document.getElementById('clearSearch').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            searchQuery = '';
+            document.getElementById('clearSearch').classList.add('hidden');
+            applyFilters();
+        });
+        
+        // Load More
+        window.loadMoreNews = async () => {
+            await loadNews(false);
+        };
+        
+        // Refresh
+        document.getElementById('refreshBtn').addEventListener('click', async () => {
+            await loadNews(true);
+            await loadCategories();
+            showToast('تم تحديث الأخبار ✅', 'success');
+        });
+        
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full text-white font-bold shadow-lg ${
+                type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+            }`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // Close modal on backdrop click
+        document.getElementById('newsModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeNewsModal();
+        });
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeNewsModal();
+        });
+        
+        // Initialize
+        async function init() {
+            await loadCategories();
+            await loadNews(true);
+        }
+        
+        init();
+    </script>
+</body>
+</html>
