@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: news-bot-system
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install
+    startCommand: node news_bot.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 18.17.0
+      - key: PORT
+        value: "3000"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_IDS
+        value: "7082122839"
+      - key: FIREBASE_PROJECT_ID
+        value: all-arab-services-750ad
+      - key: FIREBASE_STORAGE_BUCKET
+        value: all-arab-services-750ad.firebasestorage.app
+      - key: FIREBASE_DATABASE_URL
+        value: https://all-arab-services-750ad-default-rtdb.europe-west1.firebasedatabase.app
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: WEB_URL
+        value: https://all-arab-services-750ad-default-rtdb.europe-west1.firebasedatabase.app
+    autoDeploy: true
